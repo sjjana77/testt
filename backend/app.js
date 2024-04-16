@@ -23,11 +23,13 @@ app.get('/api/pages', async (req, res) => {
     // console.log("a");
     try {
         const response = await axios.get(`https://graph.facebook.com/v19.0/me/accounts?access_token=${process.env.ACCESS_TOKEN}`);
+        
         // console.log(response);
         res.json(response.data.data); 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error });
+        // console.error(error);
+        console.log(`https://graph.facebook.com/v19.0/me/accounts?access_token=${process.env.ACCESS_TOKEN}`);
+        res.status(500).json({ error: error }); 
     }
 });
 
