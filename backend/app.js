@@ -23,25 +23,30 @@ app.get('/api/pages', async (req, res) => {
     // console.log("a");
     try {
         const response = await axios.get(`https://graph.facebook.com/v19.0/me/accounts?access_token=${process.env.ACCESS_TOKEN}`);
+        
         // console.log(response);
         res.json(response.data.data); 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error });
+        // console.error(error);
+        console.log(`https://graph.facebook.com/v19.0/me/accounts?access_token=${process.env.ACCESS_TOKEN}`);
+        res.status(500).json({ error: error }); 
     }
 });
 
 app.post('/api/insights', async (req, res) => {
+  const { pageId, since, until } = req.body;
+  const limit = 10;
+
+  // Validate input (optional, but recommended for robustness)
+  if (!pageId || !since || !until) {
+    return res.status(400).json({ message: 'Missing required parameters' });
+  }
+
+  // Build the Facebook Insights API request URL
+  const url = `https://graph.facebook.com/v15.0/${pageId}/feed?access_token=${process.env.ACCESS_TOKENN}&fields=insights.metric(post_impressions_unique,post_impressions)&since=${new Date(since).getTime() / 1000}&until=${new Date(until).getTime() / 1000}&limit=${limit}`; // Adjust fields as needed
     try {
-      const { pageId, since, until, limit } = req.body;
-  
-      // Validate input (optional, but recommended for robustness)
-      if (!pageId || !since || !until) {
-        return res.status(400).json({ message: 'Missing required parameters' });
-      }
-  
-      // Build the Facebook Insights API request URL
-      const url = `https://graph.facebook.com/v15.0/${pageId}/insights?fields=impressions,reach,clicks&since=${since}&until=${until}&limit=${limit}`; // Adjust fields as needed
+      
+      console.log(url);
   
       // Make the request using Axios
       const response = await axios.get(url, {
@@ -52,10 +57,11 @@ app.post('/api/insights', async (req, res) => {
       if (response.status === 200) {
         res.json(response.data);
       } else {
-        console.error('Error fetching insights:', response.data);
+        // console.error('Error fetching insights:', response.data);
         res.status(500).json({ message: 'Error retrieving insights' });
       }
     } catch (error) {
+      // console.log(url);
       console.error('Error:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
