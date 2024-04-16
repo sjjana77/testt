@@ -11,7 +11,7 @@ const corsOptions = {
     origin: ['http://localhost/', 'http://localhost:3000/react_task', 'http://localhost:3000', 'http://localhost/', 'http://localhost:3001/react_task', 'http://localhost:3001', 'https://github.com/'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     optionsSuccessStatus: 200
-};
+}; 
 
 app.use(cors(corsOptions));
 
@@ -32,35 +32,38 @@ app.get('/api/pages', async (req, res) => {
 });
 
 app.post('/api/insights', async (req, res) => {
-    try {
-      const { pageId, since, until, limit } = req.body;
-  
-      // Validate input (optional, but recommended for robustness)
-      if (!pageId || !since || !until) {
-        return res.status(400).json({ message: 'Missing required parameters' });
-      }
-  
-      // Build the Facebook Insights API request URL
-      const url = `https://graph.facebook.com/v15.0/${pageId}/insights?fields=impressions,reach,clicks&since=${since}&until=${until}&limit=${limit}`; // Adjust fields as needed
-  
-      // Make the request using Axios
-      const response = await axios.get(url, {
-        params: { access_token: process.env.ACCESS_TOKEN } // Replace with your access token
+  let { pageId, since, until, limit } = req.body;
+  limit = 10;
+  try {
+      const postsResponse = await axios.get(`https://graph.facebook.com/v12.0/${pageId}/feed?access_token=${process.env.ACCESS_TOKENN}&fields=id&since=${new Date(since).getTime() / 1000}&until=${new Date(until).getTime() / 1000}&limit=${limit}`);
+      const posts = postsResponse.data.data;
+
+      // Fetch insights for each post
+      const insightsPromises = posts.map(async (post) => {
+          const postId = post.id;
+          const insightsResponse = await axios.get(`https://graph.facebook.com/v19.0/${postId}/insights?metric=post_impressions_unique,post_impressions&access_token=${process.env.ACCESS_TOKENN}`);
+          console.log(`https://graph.facebook.com/v19.0/${postId}/insights?metric=post_impressions_unique,post_impressions&access_token=${process.env.ACCESS_TOKENN}`);
+          return insightsResponse.data.data;
       });
-  
-      // Check for errors or successful response
-      if (response.status === 200) {
-        res.json(response.data);
-      } else {
-        console.error('Error fetching insights:', response.data);
-        res.status(500).json({ message: 'Error retrieving insights' });
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-  
+
+      // Wait for all insights requests to complete
+      const insightsData = await Promise.all(insightsPromises);
+
+      // Combine posts with their insights
+      const postsWithInsights = posts.map((post, index) => {
+          return {
+              ...post,
+              insights: insightsData[index]
+          };
+      });
+
+      res.json(postsWithInsights);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 
 
  
